@@ -17,10 +17,10 @@ contract CustomStreamRewarder is Ownable{
 
     struct Reward {
         uint256 periodFinish;
-        uint256 constantOfRewardRate; // in decimal of reward decimal + DENOMINATOR to work for small decimal rewards
+        uint256 constantOfRewardRate;
         uint256 lastUpdateTime;
-        uint256 rewardPerTokenStored; // in decimal of reward decimal + DENOMINATOR to work for small decimal rewards
-        uint256 queuedRewards; // in decimal of reward decimal + DENOMINATOR to work for small decimal rewards
+        uint256 rewardPerTokenStored;
+        uint256 queuedRewards; 
     }
 
     struct UserReward {
@@ -95,7 +95,7 @@ contract CustomStreamRewarder is Ownable{
 
     function getRewardRateAtTime(address _rewardToken, uint256 _timeStamp) public view returns (uint256) {
         Reward memory reward = rewards[_rewardToken];
-        return slopeOfRewardRate * _timeStamp + reward.constantOfRewardRate;
+        return slopeOfRewardRate * _timeStamp / DENOMINATOR + reward.constantOfRewardRate;
     }
 
     // returns in decimal of reward token decimal + DENOMINATOR to work for small decimal reward tokens
@@ -250,7 +250,7 @@ contract CustomStreamRewarder is Ownable{
         // c = _rewards / DURATION - (slope*(finishTime + startTime)/2);
 
         if (block.timestamp >= rewardInfo.periodFinish) {
-            rewardInfo.constantOfRewardRate = _rewards / duration - slopeOfRewardRate * (block.timestamp * 2 + duration);
+            rewardInfo.constantOfRewardRate = _rewards / duration - slopeOfRewardRate * (block.timestamp * 2 + duration)/ DENOMINATOR;
         } else {
             uint256 currentTime = block.timestamp;
             uint256 finishTime = rewardInfo.periodFinish;
@@ -260,7 +260,7 @@ contract CustomStreamRewarder is Ownable{
             );
             
             _rewards = _rewards + leftover;
-            rewardInfo.constantOfRewardRate = _rewards / duration - slopeOfRewardRate * (block.timestamp * 2 + duration);
+            rewardInfo.constantOfRewardRate = _rewards / duration - slopeOfRewardRate * (block.timestamp * 2 + duration) / DENOMINATOR;
         }
         rewardInfo.lastUpdateTime = block.timestamp;
         rewardInfo.periodFinish = block.timestamp + duration;

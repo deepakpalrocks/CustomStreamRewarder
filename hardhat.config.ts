@@ -80,7 +80,7 @@ const config: HardhatUserConfig = {
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     arblocalhost: {
-      url: "http://127.0.0.1:8549/",
+      url: "http://127.0.0.1:8550",
       gas: 80000000,
       timeout: 2000000,
       blockGasLimit: 702056136595,
