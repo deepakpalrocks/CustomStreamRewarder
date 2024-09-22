@@ -246,5 +246,7 @@ describe("Custom Stream Rewarder", async () => {
             
         })
 
+        it("Reward rate is updated correctly with time according to the ")
+
     });
 });

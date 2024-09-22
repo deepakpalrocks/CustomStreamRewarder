@@ -68,10 +68,8 @@ const simulation = async(addresses: string[]) => {
   console.log("Rewards earned:", await rewarder.allEarned(alice.address));
   console.log("Reward rate:", await rewarder.getCurrentRewardRate(ARBContractAddress));
   
-  
   // Move Time 
   await moveTime(86400);
-  // await rewarder.updateFor(alice.address);
   console.log("Rewards earned:", await rewarder.allEarned(alice.address));
   console.log("Reward rate:", await rewarder.getCurrentRewardRate(ARBContractAddress));
 
