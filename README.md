@@ -27,14 +27,14 @@ Mathematics:
 The y-axis signifies the reward rate and the x-axis signifies the timestamp.
 As time increases the reward rate increase parabolically.
 
-r(t) = at2 + bt + c
+r(t) = at^2 + bt + c
 
 r is a function of t.
 Area under the curve from t1 to t2 bw the curve and the x-axis gives the rewards streamed by the stream rewarder in the duration from t1 to t2.
-To calculate the amount of the rewards streamed we can do a mathematical integration on the r(t) = at2 + bt + c
+To calculate the amount of the rewards streamed we can do a mathematical integration on the r(t) = at^2 + bt + c
 And by putting the limits of integration as t1 and t2 we will get the total rewards streamed.
 
-Reward rate at any instant can be calculated by using the r(t) = at2 + bt + c formula only.
+Reward rate at any instant can be calculated by using the r(t) = at^2 + bt + c formula only.
 
 Limitation: Upon observing carefully we can see that if all the a, b, c are fixed before then the graph is fixed, it will always be same no matter how much rewards are queued to the rewarder so even if you sent more rewards or less rewards, for the given duration, the area under curve for a certain t1 and t2 would be same i.e. sending more rewards does not matter anymore.
 
@@ -48,26 +48,13 @@ This can easily be achieved as we know the area = queued amount of rewards which
 x= area under the curve from queue time stamp t1 to queue timestamp + duration t2
 
 For finding the area, we’ll have to integrate 
-r(t) = at2 + bt + c from t1 to t2
-
-x =[ at3 /3 +  bt2 /2 + ct]t2 t1
-
-So we can simply do,
-
-c= x - ( a(t23 - t13 )/ 3 +  (bt22 -bt12 )/2) )/ (t2-t1).
-
-
-So using the above mathematics in the already existing stream rewarder code which supported constant reward rate, we can easily implement the custom stream rewarder.
-
-Use cases
+r(t) = at^2 + bt + c from t1 to t2
 
 Specify non-zero ‘a’ to get a parabolic reward rate.
 Specify ‘a’ as zero and non-zero ‘b’ to get a linear reward rate.
 Specify both ‘a’ & ‘b’ as zero to get a constant reward rate.
 
-
-
 The constant reward rate does not mean the reward rate will be same if the amount of rewards sent to the rewarder are different.
 If the rewarder is used for constant reward rate it means that the reward rate will be constant until the next queue of rewards of the expiry of existing rewards. 
 
-
+Refero to the doc for more details: https://docs.google.com/document/d/1VOkuZ4MD8QEy3-mfXXA_dZ_Jo5Q2HLUs_oG33NQ4KBc
