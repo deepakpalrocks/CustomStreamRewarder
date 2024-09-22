@@ -29,7 +29,7 @@ const fundWallets = async(receiptTokenAddress: string, rewardTokenAddress: strin
   
   // Mint receipt tokens to alice & bob
   await receiptToken.connect(admin).mint(alice.address, ethers.utils.parseEther("1000"));
-  await receiptToken.connect(admin).mint(bob.address, ethers.utils.parseEther("5000"));
+  // await receiptToken.connect(admin).mint(bob.address, ethers.utils.parseEther("5000"));
 
 }
 
@@ -38,7 +38,7 @@ const deployContracts = async() =>{
     
     const receiptToken: ReceiptToken = await  new ReceiptToken__factory(admin).deploy("Test Token 1","TT1");
     const streamRewarder: CustomStreamRewarder = await new CustomStreamRewarder__factory(admin)
-      .deploy(receiptToken.address, admin.address, 86400 * 7, "1000500000000");
+      .deploy(receiptToken.address, admin.address, 86400 * 5, "0", "2000000000000");
     await receiptToken.setRewarder(streamRewarder.address);
 
     console.log("Receipt Token Deployed:", receiptToken.address);
@@ -52,6 +52,7 @@ const simulation = async(addresses: string[]) => {
   const rewarder: CustomStreamRewarder = CustomStreamRewarder__factory.connect(addresses[1], admin);
   const ARBToken: ERC20 = ERC20__factory.connect(ARBContractAddress, admin);
 
+  // await rewarder.getTimeStamp();
   // Fund admin with reward tokens(ARB token), alice & bob with receipt tokens
   await fundWallets(receiptToken.address, ARBContractAddress);
 
@@ -59,15 +60,40 @@ const simulation = async(addresses: string[]) => {
   await ARBToken.connect(admin).approve(rewarder.address, ethers.utils.parseEther("1000"));
   await rewarder.connect(admin).queueNewRewards(ethers.utils.parseEther("1000"), ARBContractAddress);
 
+  let timeStamp = await rewarder.returnTimeStamp();
+  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+
   // Move Time 
   await moveTime(86400);
   await rewarder.updateFor(alice.address);
   console.log("Rewards earned:", await rewarder.allEarned(alice.address));
+  timeStamp = await rewarder.returnTimeStamp();
+  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+  
   
   // Move Time 
   await moveTime(86400);
-  await rewarder.updateFor(alice.address);
+  // await rewarder.updateFor(alice.address);
   console.log("Rewards earned:", await rewarder.allEarned(alice.address));
+  timeStamp = await rewarder.returnTimeStamp();
+  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+
+  // Move Time 
+  await moveTime(86400);
+  // await rewarder.updateFor(alice.address);
+  console.log("Rewards earned:", await rewarder.allEarned(alice.address));
+  timeStamp = await rewarder.returnTimeStamp();
+  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+
+  // Move Time 
+  await moveTime(86400);
+  // await rewarder.updateFor(alice.address);
+  console.log("Rewards earned:", await rewarder.allEarned(alice.address));
+  timeStamp = await rewarder.returnTimeStamp();
+  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+
+
+  // 1727441120
   
 }
 

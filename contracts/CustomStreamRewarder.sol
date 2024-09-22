@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "hardhat/console.sol";
 
 
 /// @author Deepak Pal: https://github.com/deepakpalrocks
@@ -17,7 +18,7 @@ contract CustomStreamRewarder is Ownable{
 
     struct Reward {
         uint256 periodFinish;
-        uint256 constantOfRewardRate;
+        int256 coefficient_c;
         uint256 lastUpdateTime;
         uint256 rewardPerTokenStored;
         uint256 queuedRewards; 
@@ -32,9 +33,10 @@ contract CustomStreamRewarder is Ownable{
     address[] public rewardTokens;
 
     uint256 public duration; // duration over which harvested rewards are distributed every time
-    // Current reward rate = a_RewardRate * time + b_RewardRate
-    uint256 public slopeOfRewardRate;
-    uint256 public constantOfRewardRate;
+    // Current reward rate = coefficient_a * timestamp ^2 + coefficient_b * timestamp + codefficient_c 
+    uint256 public coefficient_a;
+    uint256 public coefficient_b;
+    // uint256 public constantOfRewardRate;
     uint256 public constant DENOMINATOR = 10 ** 12;
     uint256 public receiptTokenDecimal;
 
@@ -62,9 +64,10 @@ contract CustomStreamRewarder is Ownable{
 
     /* ================================= Constructor ===========================*/
 
-    constructor(address _receiptToken, address _rewardQueuer, uint256 _duration, uint256 _slope) {
+    constructor(address _receiptToken, address _rewardQueuer, uint256 _duration, uint256 _coefficient_a, uint256 _coefficient_b) {
 
-        slopeOfRewardRate = _slope;
+        coefficient_a = _coefficient_a;
+        coefficient_b = _coefficient_b;
         receiptToken = _receiptToken;
         isRewardQueuer[_rewardQueuer] = true;
         duration = _duration;
@@ -95,7 +98,14 @@ contract CustomStreamRewarder is Ownable{
 
     function getRewardRateAtTime(address _rewardToken, uint256 _timeStamp) public view returns (uint256) {
         Reward memory reward = rewards[_rewardToken];
-        return slopeOfRewardRate * _timeStamp / DENOMINATOR + reward.constantOfRewardRate;
+        int256 rewardRate = int256(coefficient_a * _timeStamp * _timeStamp 
+            +  coefficient_b * _timeStamp )
+            + reward.coefficient_c;
+        return uint256(rewardRate) / DENOMINATOR;
+    }
+
+    function returnTimeStamp() public view returns(uint256){
+        return block.timestamp;
     }
 
     // returns in decimal of reward token decimal + DENOMINATOR to work for small decimal reward tokens
@@ -105,17 +115,19 @@ contract CustomStreamRewarder is Ownable{
         if (totalStaked() == 0) {
             return reward.rewardPerTokenStored;
         }
-        // Area under the linear graph with non-zero constant term will give the Rewards accumullated, 
-        // which will be area of triangle + area of rectangle for reward rate vz time graph
-        // area = delTime * old Reward rate + 1/2* delTime * (new reward Rate - old reward rate) = delTime/2(new reward rate + old reward rate)
+        
         uint256 lastUpdateTimeStamp = reward.lastUpdateTime;
         uint256 latestApplicableTimeStamp = lastTimeRewardApplicable(_rewardToken);
-        uint256 timeDiff = latestApplicableTimeStamp -  lastUpdateTimeStamp;
-        uint256 totalRewardTokensAccumuated = timeDiff * (
-            getRewardRateAtTime(_rewardToken, latestApplicableTimeStamp) + getRewardRateAtTime(_rewardToken, lastUpdateTimeStamp)
-        ); 
 
-        return reward.rewardPerTokenStored + (totalRewardTokensAccumuated * (10 ** receiptTokenDecimal) / (totalStaked()));
+        // Apply mathematical integration on the parabolic equaltion(r = at2 + bt + c) with limit t1 to t2 to 
+        // get the area under curve for reward rate vz timestamp graph.
+        uint256 totalRewardTokensAccumuated = _calculateRewardsUsedInDuration(
+            lastUpdateTimeStamp, 
+            latestApplicableTimeStamp, 
+            reward.coefficient_c
+        );
+
+        return reward.rewardPerTokenStored + (totalRewardTokensAccumuated * DENOMINATOR / (totalStaked()));
     }
 
     function getRewardLength() external view returns (uint256) {
@@ -126,7 +138,7 @@ contract CustomStreamRewarder is Ownable{
         UserReward memory userReward = userRewards[_rewardToken][_account];
         return (
             (balanceOf(_account) * (rewardPerToken(_rewardToken) - userReward.userRewardPerTokenPaid))
-                / (DENOMINATOR * (10 ** receiptTokenDecimal))
+                / (DENOMINATOR )
         ) + userReward.rewards;
     }
 
@@ -232,7 +244,7 @@ contract CustomStreamRewarder is Ownable{
     /* ===================================== Internal Functions ======================================== */
 
     function _provisionReward(uint256 _rewards, address _rewardToken) internal {
-        _rewards = _rewards * DENOMINATOR; // to support small deciaml rewards
+        _rewards = _rewards ; // to support small deciaml rewards
 
         Reward storage rewardInfo = rewards[_rewardToken];
 
@@ -249,19 +261,26 @@ contract CustomStreamRewarder is Ownable{
         // using rewardstoQueue = delTime/2 *(rate at finish time of DURATION + rate at start time of DURATION)
         // c = _rewards / DURATION - (slope*(finishTime + startTime)/2);
 
-        if (block.timestamp >= rewardInfo.periodFinish) {
-            rewardInfo.constantOfRewardRate = _rewards / duration - slopeOfRewardRate * (block.timestamp * 2 + duration)/ DENOMINATOR;
-        } else {
-            uint256 currentTime = block.timestamp;
+        uint256 currentTime = block.timestamp;
+        uint256 newFinishTime = currentTime + duration;
+
+        uint256 timeDiff = newFinishTime -  currentTime;
+        uint256 timeSquareDiff = newFinishTime * newFinishTime - currentTime * currentTime;
+        uint256 timeCubeDiff = newFinishTime * newFinishTime * newFinishTime 
+            -  currentTime * currentTime * currentTime;
+
+        if(block.timestamp < rewardInfo.periodFinish) {
             uint256 finishTime = rewardInfo.periodFinish;
-            uint256 remainingTime = finishTime - currentTime;
-            uint256 leftover = remainingTime * (
-                getRewardRateAtTime(_rewardToken, finishTime) + getRewardRateAtTime(_rewardToken, currentTime)
-            );
-            
+            uint256 leftover = _calculateRewardsUsedInDuration(currentTime, finishTime, rewardInfo.coefficient_c);
             _rewards = _rewards + leftover;
-            rewardInfo.constantOfRewardRate = _rewards / duration - slopeOfRewardRate * (block.timestamp * 2 + duration) / DENOMINATOR;
         }
+        
+        rewardInfo.coefficient_c = (
+            int256(_rewards)
+            - int256(timeCubeDiff * coefficient_a /  DENOMINATOR) / 3
+            - int256(timeSquareDiff * coefficient_b / DENOMINATOR) / 2
+            ) * int256(DENOMINATOR) / int256(timeDiff);
+        
         rewardInfo.lastUpdateTime = block.timestamp;
         rewardInfo.periodFinish = block.timestamp + duration;
     }
@@ -287,6 +306,22 @@ contract CustomStreamRewarder is Ownable{
             IERC20(_rewardToken).safeTransfer(_receiver, reward);
             emit RewardPaid(_account, _receiver, reward, _rewardToken);
         }
+    }
+
+    function _calculateRewardsUsedInDuration(uint256 _fromTimestamp, uint256 _toTimestamp, int256 _coefficient_c) internal view returns(uint256){
+        uint256 timeDiff = _toTimestamp - _fromTimestamp; 
+        uint256 timeSquareDiff = _toTimestamp * _toTimestamp - _fromTimestamp * _fromTimestamp; 
+        uint256 timeCubeDiff = _toTimestamp * _toTimestamp * _toTimestamp 
+            - _fromTimestamp * _fromTimestamp * _fromTimestamp;
+
+        // Calculate Area under parabolic curve denoted by r = at^2 +bt + c using mathematical integration
+        // limits will be from & to timestamps
+
+        int256 rewardsAccumulated = int256(coefficient_a * timeCubeDiff / 3
+            + coefficient_b * timeSquareDiff / 2)
+            + _coefficient_c * int256(timeDiff);
+
+        return uint256(rewardsAccumulated) / DENOMINATOR;
     }
 
     /* ======================== Admin Functions ===================================== */
