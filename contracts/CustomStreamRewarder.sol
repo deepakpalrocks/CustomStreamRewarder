@@ -104,8 +104,8 @@ contract CustomStreamRewarder is Ownable{
         return uint256(rewardRate) / DENOMINATOR;
     }
 
-    function returnTimeStamp() public view returns(uint256){
-        return block.timestamp;
+    function getCurrentRewardRate(address _rewardToken) public view returns(uint256) {
+        return getRewardRateAtTime(_rewardToken, block.timestamp);
     }
 
     // returns in decimal of reward token decimal + DENOMINATOR to work for small decimal reward tokens
@@ -263,7 +263,7 @@ contract CustomStreamRewarder is Ownable{
 
         uint256 currentTime = block.timestamp;
         uint256 newFinishTime = currentTime + duration;
-
+console.log(currentTime);
         uint256 timeDiff = newFinishTime -  currentTime;
         uint256 timeSquareDiff = newFinishTime * newFinishTime - currentTime * currentTime;
         uint256 timeCubeDiff = newFinishTime * newFinishTime * newFinishTime 
@@ -273,6 +273,7 @@ contract CustomStreamRewarder is Ownable{
             uint256 finishTime = rewardInfo.periodFinish;
             uint256 leftover = _calculateRewardsUsedInDuration(currentTime, finishTime, rewardInfo.coefficient_c);
             _rewards = _rewards + leftover;
+            console.log("left:",leftover);
         }
         
         rewardInfo.coefficient_c = (

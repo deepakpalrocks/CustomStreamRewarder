@@ -60,40 +60,23 @@ const simulation = async(addresses: string[]) => {
   await ARBToken.connect(admin).approve(rewarder.address, ethers.utils.parseEther("1000"));
   await rewarder.connect(admin).queueNewRewards(ethers.utils.parseEther("1000"), ARBContractAddress);
 
-  let timeStamp = await rewarder.returnTimeStamp();
-  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+  console.log("Reward rate:", await rewarder.getCurrentRewardRate(ARBContractAddress));
 
   // Move Time 
   await moveTime(86400);
   await rewarder.updateFor(alice.address);
   console.log("Rewards earned:", await rewarder.allEarned(alice.address));
-  timeStamp = await rewarder.returnTimeStamp();
-  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+  console.log("Reward rate:", await rewarder.getCurrentRewardRate(ARBContractAddress));
   
   
   // Move Time 
   await moveTime(86400);
   // await rewarder.updateFor(alice.address);
   console.log("Rewards earned:", await rewarder.allEarned(alice.address));
-  timeStamp = await rewarder.returnTimeStamp();
-  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
+  console.log("Reward rate:", await rewarder.getCurrentRewardRate(ARBContractAddress));
 
-  // Move Time 
-  await moveTime(86400);
-  // await rewarder.updateFor(alice.address);
-  console.log("Rewards earned:", await rewarder.allEarned(alice.address));
-  timeStamp = await rewarder.returnTimeStamp();
-  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
-
-  // Move Time 
-  await moveTime(86400);
-  // await rewarder.updateFor(alice.address);
-  console.log("Rewards earned:", await rewarder.allEarned(alice.address));
-  timeStamp = await rewarder.returnTimeStamp();
-  console.log("Reward rate:", await rewarder.getRewardRateAtTime(ARBContractAddress, timeStamp));
-
-
-  // 1727441120
+  await rewarder.getReward(alice.address);
+  console.log("Rewards claimed:", await ARBToken.balanceOf(alice.address));
   
 }
 
